@@ -45,7 +45,7 @@ def listar_turmas():
 def listar_alunos_turma(turma_id: int):
     """
     GET /api/turmas/{turma_id}/alunos
-    Retorna alunos de uma turma específica
+    Retorna alunos de uma turma específica com status atual do CSV
     """
     alunos = db.obter_alunos_por_turma(turma_id)
     
@@ -56,15 +56,11 @@ def listar_alunos_turma(turma_id: int):
             status_code=404
         )
     
-    # Adicionar status de presença (padrão: presente)
-    alunos_com_status = []
-    for aluno in alunos:
-        aluno_dict = aluno.to_dict()
-        aluno_dict['presente'] = True  # Default
-        alunos_com_status.append(aluno_dict)
+    # to_dict já converte presenca_aluno para boolean 'presente'
+    alunos_dict = [aluno.to_dict() for aluno in alunos]
     
     return json_response(
-        data=alunos_com_status,
+        data=alunos_dict,
         message=f'{len(alunos)} aluno(s) encontrado(s)'
     )
 
@@ -74,7 +70,7 @@ def listar_alunos_turma(turma_id: int):
 def salvar_presencas():
     """
     POST /api/presencas
-    Salva registro de presenças
+    Salva registro de presenças (atualiza CSV + salva histórico em JSON)
     
     Body: {
         "turma_id": 1,
@@ -96,7 +92,7 @@ def salvar_presencas():
     except ValueError:
         raise ValueError('Data deve estar no formato YYYY-MM-DD')
     
-    # Salvar
+    # Salvar (atualiza CSV + JSON)
     sucesso = db.salvar_presencas(
         turma_id=data['turma_id'],
         data=data['data'],
@@ -105,7 +101,7 @@ def salvar_presencas():
     
     if sucesso:
         return json_response(
-            message='Presenças salvas com sucesso',
+            message='Presenças salvas com sucesso (CSV atualizado + histórico salvo)',
             status_code=201
         )
     else:
@@ -121,7 +117,7 @@ def salvar_presencas():
 def listar_presencas():
     """
     GET /api/presencas?turma_id=1&data=2024-01-15
-    Retorna presenças com filtros opcionais
+    Retorna histórico de presenças (do JSON)
     """
     turma_id = request.args.get('turma_id', type=int)
     data = request.args.get('data', type=str)

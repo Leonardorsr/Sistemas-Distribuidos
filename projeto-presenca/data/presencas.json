@@ -1,0 +1,48 @@
+[
+  {
+    "turma_id": 3,
+    "data": "2025-11-11",
+    "timestamp": "2025-11-10T14:58:47.890921",
+    "presencas": [
+      {
+        "aluno_id": "2024011",
+        "presente": false
+      },
+      {
+        "aluno_id": "2024012",
+        "presente": true
+      },
+      {
+        "aluno_id": "2024013",
+        "presente": false
+      },
+      {
+        "aluno_id": "2024014",
+        "presente": true
+      }
+    ]
+  },
+  {
+    "turma_id": 3,
+    "data": "2025-11-10",
+    "timestamp": "2025-11-10T14:59:01.154529",
+    "presencas": [
+      {
+        "aluno_id": "2024011",
+        "presente": false
+      },
+      {
+        "aluno_id": "2024012",
+        "presente": true
+      },
+      {
+        "aluno_id": "2024013",
+        "presente": false
+      },
+      {
+        "aluno_id": "2024014",
+        "presente": true
+      }
+    ]
+  }
+]

@@ -22,10 +22,10 @@
         <div class="controls">
             <div class="control-group">
                 <label for="turma">Turma:</label>
-                <select id="turma" v-model="turmaSelecionada" @change="carregarAlunos">
-                    <option value="">Selecione uma turma</option>
+                <select id="turma" v-model="turmaSelecionada" @change="carregarAlunos" :disabled="loadingTurmas">
+                    <option value="">{{ loadingTurmas ? 'Carregando...' : 'Selecione uma turma' }}</option>
                     <option v-for="turma in turmas" :key="turma.id" :value="turma.id">
-                        {{ turma.nome }}
+                        {{ turma.nome }} ({{ turma.quantidade_alunos }} alunos)
                     </option>
                 </select>
             </div>
@@ -35,59 +35,81 @@
                 <input type="date" id="data" v-model="dataAtual">
             </div>
 
-            <button @click="salvarPresencas" class="btn btn-primary" :disabled="!turmaSelecionada">
-                💾 Salvar Presenças
+            <button 
+                @click="salvarPresencas" 
+                class="btn btn-primary" 
+                :disabled="!turmaSelecionada || salvando || loadingAlunos">
+                {{ salvando ? '⏳ Salvando...' : '💾 Salvar Presenças' }}
             </button>
         </div>
 
         <!-- Lista de Alunos -->
         <div class="container" v-if="turmaSelecionada">
-            <div class="stats">
-                <div class="stat-card">
-                    <span class="stat-number">{{ totalAlunos }}</span>
-                    <span class="stat-label">Total de Alunos</span>
-                </div>
-                <div class="stat-card success">
-                    <span class="stat-number">{{ totalPresentes }}</span>
-                    <span class="stat-label">Presentes</span>
-                </div>
-                <div class="stat-card danger">
-                    <span class="stat-number">{{ totalAusentes }}</span>
-                    <span class="stat-label">Ausentes</span>
-                </div>
+            <!-- Loading -->
+            <div v-if="loadingAlunos" class="empty-state">
+                <p>⏳ Carregando alunos...</p>
             </div>
 
-            <div class="alunos-list">
-                <div class="aluno-card" 
-                     v-for="aluno in alunos" 
-                     :key="aluno.id"
-                     :class="{ 'presente': aluno.presente, 'ausente': !aluno.presente }">
-                    
-                    <div class="aluno-info">
-                        <span class="aluno-nome">{{ aluno.nome }}</span>
-                        <span class="aluno-matricula">Mat: {{ aluno.matricula }}</span>
+            <template v-else>
+                <!-- Stats -->
+                <div class="stats">
+                    <div class="stat-card">
+                        <span class="stat-number">{{ totalAlunos }}</span>
+                        <span class="stat-label">Total de Alunos</span>
                     </div>
-
-                    <div class="aluno-actions">
-                        <button 
-                            @click="marcarPresenca(aluno, true)" 
-                            class="btn-toggle"
-                            :class="{ 'active': aluno.presente }">
-                            ✓ Presente
-                        </button>
-                        <button 
-                            @click="marcarPresenca(aluno, false)" 
-                            class="btn-toggle"
-                            :class="{ 'active': !aluno.presente }">
-                            ✗ Ausente
-                        </button>
+                    <div class="stat-card success">
+                        <span class="stat-number">{{ totalPresentes }}</span>
+                        <span class="stat-label">Presentes</span>
+                    </div>
+                    <div class="stat-card danger">
+                        <span class="stat-number">{{ totalAusentes }}</span>
+                        <span class="stat-label">Ausentes</span>
                     </div>
                 </div>
 
-                <div v-if="alunos.length === 0" class="empty-state">
-                    <p>Nenhum aluno encontrado nesta turma</p>
+                <!-- Ações Rápidas -->
+                <div class="quick-actions" v-if="alunos.length > 0">
+                    <button @click="marcarTodosPresente" class="btn btn-success">
+                        ✓ Marcar Todos Presente
+                    </button>
+                    <button @click="marcarTodosAusente" class="btn btn-danger">
+                        ✗ Marcar Todos Ausente
+                    </button>
                 </div>
-            </div>
+
+                <!-- Lista de Alunos -->
+                <div class="alunos-list">
+                    <div class="aluno-card" 
+                         v-for="aluno in alunos" 
+                         :key="aluno.id"
+                         :class="{ 'presente': aluno.presente, 'ausente': !aluno.presente }">
+                        
+                        <div class="aluno-info">
+                            <span class="aluno-nome">{{ aluno.nome }}</span>
+                            <span class="aluno-matricula">Mat: {{ aluno.matricula }}</span>
+                        </div>
+
+                        <div class="aluno-actions">
+                            <button 
+                                @click="marcarPresenca(aluno, true)" 
+                                class="btn-toggle"
+                                :class="{ 'active': aluno.presente }">
+                                ✓ Presente
+                            </button>
+                            <button 
+                                @click="marcarPresenca(aluno, false)" 
+                                class="btn-toggle"
+                                :class="{ 'active': !aluno.presente }">
+                                ✗ Ausente
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="alunos.length === 0" class="empty-state">
+                        <p>Nenhum aluno encontrado nesta turma</p>
+                    </div>
+                </div>
+            </template>
         </div>
 
         <div class="container empty-state" v-else>

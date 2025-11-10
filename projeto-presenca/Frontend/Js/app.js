@@ -3,7 +3,7 @@ const { createApp } = Vue;
 createApp({
     data() {
         return {
-            // URL do backend (ajustar depois)
+            // URL do backend
             apiUrl: 'http://localhost:5000/api',
             
             // Dados
@@ -11,6 +11,11 @@ createApp({
             alunos: [],
             turmaSelecionada: '',
             dataAtual: new Date().toISOString().split('T')[0],
+            
+            // Estados de loading
+            loadingTurmas: false,
+            loadingAlunos: false,
+            salvando: false,
             
             // Toast
             toast: {
@@ -36,76 +41,154 @@ createApp({
     },
 
     methods: {
+        /**
+         * Carrega lista de turmas do backend
+         */
         async carregarTurmas() {
+            this.loadingTurmas = true;
+            
             try {
-                // Temporário: dados mockados
-                // Depois substituir por: const res = await axios.get(`${this.apiUrl}/turmas`);
-                this.turmas = [
-                    { id: 1, nome: '1º Ano A - Matemática' },
-                    { id: 2, nome: '1º Ano B - Matemática' },
-                    { id: 3, nome: '2º Ano A - Física' }
-                ];
+                const response = await axios.get(`${this.apiUrl}/turmas`);
+                
+                if (response.data.success) {
+                    this.turmas = response.data.data;
+                    console.log('✅ Turmas carregadas:', this.turmas.length);
+                } else {
+                    throw new Error(response.data.message || 'Erro ao carregar turmas');
+                }
             } catch (error) {
-                this.mostrarToast('Erro ao carregar turmas', 'error');
-                console.error(error);
+                console.error('❌ Erro ao carregar turmas:', error);
+                this.mostrarToast('Erro ao carregar turmas. Verifique se o backend está rodando.', 'error');
+                
+                // Fallback: dados mockados para desenvolvimento
+                this.turmas = [
+                    { id: 1, nome: '1º Ano A - Matemática (Mock)', quantidade_alunos: 0 },
+                    { id: 2, nome: '1º Ano B - Matemática (Mock)', quantidade_alunos: 0 }
+                ];
+            } finally {
+                this.loadingTurmas = false;
             }
         },
 
+        /**
+         * Carrega alunos de uma turma específica
+         */
         async carregarAlunos() {
             if (!this.turmaSelecionada) {
                 this.alunos = [];
                 return;
             }
 
+            this.loadingAlunos = true;
+            this.alunos = []; // Limpa lista anterior
+
             try {
-                // Temporário: dados mockados
-                // Depois substituir por: 
-                // const res = await axios.get(`${this.apiUrl}/turmas/${this.turmaSelecionada}/alunos`);
+                const response = await axios.get(
+                    `${this.apiUrl}/turmas/${this.turmaSelecionada}/alunos`
+                );
                 
-                this.alunos = [
-                    { id: 1, nome: 'Ana Silva', matricula: '2024001', presente: true },
-                    { id: 2, nome: 'Bruno Costa', matricula: '2024002', presente: true },
-                    { id: 3, nome: 'Carlos Santos', matricula: '2024003', presente: false },
-                    { id: 4, nome: 'Diana Oliveira', matricula: '2024004', presente: true },
-                    { id: 5, nome: 'Eduardo Lima', matricula: '2024005', presente: true },
-                    { id: 6, nome: 'Fernanda Souza', matricula: '2024006', presente: false },
-                    { id: 7, nome: 'Gabriel Pereira', matricula: '2024007', presente: true },
-                    { id: 8, nome: 'Helena Rodrigues', matricula: '2024008', presente: true }
-                ];
+                if (response.data.success) {
+                    this.alunos = response.data.data;
+                    console.log('✅ Alunos carregados:', this.alunos.length);
+                    
+                    if (this.alunos.length === 0) {
+                        this.mostrarToast('Nenhum aluno encontrado nesta turma', 'error');
+                    }
+                } else {
+                    throw new Error(response.data.message || 'Erro ao carregar alunos');
+                }
             } catch (error) {
-                this.mostrarToast('Erro ao carregar alunos', 'error');
-                console.error(error);
+                console.error('❌ Erro ao carregar alunos:', error);
+                
+                if (error.response && error.response.status === 404) {
+                    this.mostrarToast('Turma não encontrada ou sem alunos', 'error');
+                } else {
+                    this.mostrarToast('Erro ao carregar alunos. Verifique o backend.', 'error');
+                }
+                
+                this.alunos = [];
+            } finally {
+                this.loadingAlunos = false;
             }
         },
 
+        /**
+         * Marca presença ou falta de um aluno
+         */
         marcarPresenca(aluno, presente) {
             aluno.presente = presente;
+            console.log(`📝 ${aluno.nome}: ${presente ? 'PRESENTE' : 'AUSENTE'}`);
         },
 
+        /**
+         * Salva presenças no backend
+         */
         async salvarPresencas() {
+            if (!this.turmaSelecionada) {
+                this.mostrarToast('Selecione uma turma primeiro', 'error');
+                return;
+            }
+
+            if (this.alunos.length === 0) {
+                this.mostrarToast('Nenhum aluno para salvar', 'error');
+                return;
+            }
+
+            this.salvando = true;
+
             try {
                 const dados = {
-                    turma_id: this.turmaSelecionada,
+                    turma_id: parseInt(this.turmaSelecionada),
                     data: this.dataAtual,
-                    presencas: this.alunos.map(a => ({
-                        aluno_id: a.id,
-                        presente: a.presente
+                    presencas: this.alunos.map(aluno => ({
+                        aluno_id: aluno.id,  // Mantém como string (ex: "2024001")
+                        presente: aluno.presente
                     }))
                 };
 
-                // Temporário: apenas log
-                console.log('Salvando presenças:', dados);
+                console.log('💾 Salvando presenças:', dados);
                 
-                // Depois descomentar:
-                // await axios.post(`${this.apiUrl}/presencas`, dados);
+                const response = await axios.post(
+                    `${this.apiUrl}/presencas`,
+                    dados,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
                 
-                this.mostrarToast('✓ Presenças salvas com sucesso!', 'success');
+                if (response.data.success) {
+                    this.mostrarToast('✓ Presenças salvas com sucesso!', 'success');
+                    console.log('✅ Resposta do servidor:', response.data.message);
+                    
+                    // Recarregar alunos para pegar status atualizado do CSV
+                    await this.carregarAlunos();
+                } else {
+                    throw new Error(response.data.message || 'Erro ao salvar');
+                }
             } catch (error) {
-                this.mostrarToast('✗ Erro ao salvar presenças', 'error');
-                console.error(error);
+                console.error('❌ Erro ao salvar presenças:', error);
+                
+                if (error.response) {
+                    // Erro retornado pelo servidor
+                    const message = error.response.data.message || 'Erro no servidor';
+                    this.mostrarToast(`✗ ${message}`, 'error');
+                } else if (error.request) {
+                    // Requisição feita mas sem resposta
+                    this.mostrarToast('✗ Sem resposta do servidor. Backend está rodando?', 'error');
+                } else {
+                    // Erro ao configurar requisição
+                    this.mostrarToast('✗ Erro ao enviar dados', 'error');
+                }
+            } finally {
+                this.salvando = false;
             }
         },
 
+        /**
+         * Exibe mensagem toast
+         */
         mostrarToast(message, type = 'success') {
             this.toast.message = message;
             this.toast.type = type;
@@ -114,10 +197,35 @@ createApp({
             setTimeout(() => {
                 this.toast.show = false;
             }, 3000);
+        },
+
+        /**
+         * Marcar todos como presente
+         */
+        marcarTodosPresente() {
+            this.alunos.forEach(aluno => {
+                aluno.presente = true;
+            });
+            this.mostrarToast('Todos marcados como presentes', 'success');
+        },
+
+        /**
+         * Marcar todos como ausente
+         */
+        marcarTodosAusente() {
+            this.alunos.forEach(aluno => {
+                aluno.presente = false;
+            });
+            this.mostrarToast('Todos marcados como ausentes', 'error');
         }
     },
 
+    /**
+     * Inicialização quando o componente é montado
+     */
     mounted() {
+        console.log('🚀 Sistema de Presença iniciado');
+        console.log('🔗 Backend URL:', this.apiUrl);
         this.carregarTurmas();
     }
 }).mount('#app');
