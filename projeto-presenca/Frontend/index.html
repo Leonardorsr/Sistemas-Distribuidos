@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Presença</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Vue 3 via CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Axios para chamadas HTTP -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <h1>📚 Sistema de Presença</h1>
+            <p>Gerencie faltas e presenças de forma simples</p>
+        </header>
+
+        <!-- Seletor de Turma e Data -->
+        <div class="controls">
+            <div class="control-group">
+                <label for="turma">Turma:</label>
+                <select id="turma" v-model="turmaSelecionada" @change="carregarAlunos">
+                    <option value="">Selecione uma turma</option>
+                    <option v-for="turma in turmas" :key="turma.id" :value="turma.id">
+                        {{ turma.nome }}
+                    </option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="data">Data:</label>
+                <input type="date" id="data" v-model="dataAtual">
+            </div>
+
+            <button @click="salvarPresencas" class="btn btn-primary" :disabled="!turmaSelecionada">
+                💾 Salvar Presenças
+            </button>
+        </div>
+
+        <!-- Lista de Alunos -->
+        <div class="container" v-if="turmaSelecionada">
+            <div class="stats">
+                <div class="stat-card">
+                    <span class="stat-number">{{ totalAlunos }}</span>
+                    <span class="stat-label">Total de Alunos</span>
+                </div>
+                <div class="stat-card success">
+                    <span class="stat-number">{{ totalPresentes }}</span>
+                    <span class="stat-label">Presentes</span>
+                </div>
+                <div class="stat-card danger">
+                    <span class="stat-number">{{ totalAusentes }}</span>
+                    <span class="stat-label">Ausentes</span>
+                </div>
+            </div>
+
+            <div class="alunos-list">
+                <div class="aluno-card" 
+                     v-for="aluno in alunos" 
+                     :key="aluno.id"
+                     :class="{ 'presente': aluno.presente, 'ausente': !aluno.presente }">
+                    
+                    <div class="aluno-info">
+                        <span class="aluno-nome">{{ aluno.nome }}</span>
+                        <span class="aluno-matricula">Mat: {{ aluno.matricula }}</span>
+                    </div>
+
+                    <div class="aluno-actions">
+                        <button 
+                            @click="marcarPresenca(aluno, true)" 
+                            class="btn-toggle"
+                            :class="{ 'active': aluno.presente }">
+                            ✓ Presente
+                        </button>
+                        <button 
+                            @click="marcarPresenca(aluno, false)" 
+                            class="btn-toggle"
+                            :class="{ 'active': !aluno.presente }">
+                            ✗ Ausente
+                        </button>
+                    </div>
+                </div>
+
+                <div v-if="alunos.length === 0" class="empty-state">
+                    <p>Nenhum aluno encontrado nesta turma</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="container empty-state" v-else>
+            <p>👆 Selecione uma turma para começar</p>
+        </div>
+
+        <!-- Toast de Notificação -->
+        <div class="toast" :class="{ 'show': toast.show, [toast.type]: true }">
+            {{ toast.message }}
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
